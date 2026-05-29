@@ -2,6 +2,8 @@
 
 Auto-restart Clash Verge when the proxy core `verge-mihomo` goes rogue and burns CPU.
 
+> macOS only. Requires [Clash Verge](https://github.com/clash-verge-rev/clash-verge-rev).
+
 ## Install
 
 ```sh
