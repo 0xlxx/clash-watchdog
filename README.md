@@ -1,53 +1,49 @@
 # clash-watchdog
 
-Clash Verge CPU 异常自动重启守护进程。
+Auto-restart Clash Verge when the proxy core `verge-mihomo` goes rogue and burns CPU.
 
-## 背景
-
-Clash Verge 的代理核心进程 `verge-mihomo` 会以 root 权限运行。在特定条件下（可能是规则匹配死循环、内存泄漏、或长时间运行后的状态退化），该进程 CPU 会飙升至 140%+ 并持续不降，导致 Mac 严重发热、电池快速耗尽。
-
-这个问题具有隐蔽性——代理仍然正常工作，网络没有任何异常表现，用户难以察觉是 Clash Verge 在后台烧 CPU。只有在 Mac 风扇狂转、外壳烫手时才会发现。
-
-本 watchdog 持续监控 `verge-mihomo` 的 CPU 占用，一旦连续超标即自动重启 Clash Verge，无需人工干预。
-
-## 安装
+## Install
 
 ```sh
-# 安装 LaunchAgent 到 ~/Library/LaunchAgents/
-cp com.bjorn.clash-watchdog.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.bjorn.clash-watchdog.plist
+./clash-watchdog.sh install
 ```
 
-## 卸载
+This copies the LaunchAgent plist and starts it. The watchdog runs on boot and keeps running.
+
+## Usage
 
 ```sh
-launchctl unload ~/Library/LaunchAgents/com.bjorn.clash-watchdog.plist
-rm ~/Library/LaunchAgents/com.bjorn.clash-watchdog.plist
+./clash-watchdog.sh start       # start
+./clash-watchdog.sh stop        # stop
+./clash-watchdog.sh status      # show status
+./clash-watchdog.sh log         # tail the log
+./clash-watchdog.sh test        # test mode (auto-stop, fast checks, simulated restart)
+./clash-watchdog.sh uninstall   # remove LaunchAgent
 ```
 
-## 工作逻辑
+## Why
 
-| 参数 | 值 |
-|------|-----|
-| 检测间隔 | 10 秒 |
-| CPU 阈值 | 80% |
-| 连续超标次数 | 3 次（共 30 秒） |
-| 重启方式 | osascript 优雅退出 → 强制 kill → relaunch |
+Clash Verge's `verge-mihomo` sometimes spikes to 140%+ CPU and stays there — the proxy still works, so you won't notice until your Mac is on fire. This catches it and restarts automatically.
 
-## 管理
+- **Check interval:** 10 seconds
+- **CPU threshold:** 80%
+- **Trigger:** 3 consecutive readings (30 seconds total)
+- **Restart cooldown:** 3 restarts in 5 minutes → suppress to avoid restart loops
+
+## Telegram notifications
 
 ```sh
-# 查看日志
-tail -f ~/.local/var/log/clash-watchdog.log
-
-# 停止
-launchctl stop com.bjorn.clash-watchdog
-
-# 启动
-launchctl start com.bjorn.clash-watchdog
+mkdir -p ~/.config/clash-watchdog
+cat > ~/.config/clash-watchdog/env << 'EOF'
+TELEGRAM_BOT_TOKEN="your_bot_token"
+TELEGRAM_CHAT_ID="your_chat_id"
+EOF
+chmod 600 ~/.config/clash-watchdog/env
 ```
 
-## 日志示例
+Restart and cooldown events are pushed to you. If the file doesn't exist, notifications are silently skipped.
+
+## Logs
 
 ```
 [2026-05-29 08:30:01] Watchdog started. Monitoring verge-mihomo — threshold: 80% × 3 checks.
